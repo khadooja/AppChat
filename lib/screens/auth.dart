@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/widget/user_image.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 final _firebase = FirebaseAuth.instance;
 
@@ -16,12 +19,19 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLogin = true;
   var _enteredEmail = '';
   var _enteredPassword = '';
+  var _enteredUserName = '';
+  File? _userImageFile;
+  var _isuploading = false;
   void _submit() async {
     final isValid = _formKey.currentState?.validate();
-    if (isValid == null || !isValid) {
+    if (isValid == null || !isValid || (_isLogin && _userImageFile == null)) {
       return;
     }
+
     try {
+      setState(() {
+        _isuploading = true;
+      });
       if (_isLogin) {
         final UserCredential userCredential =
             await _firebase.signInWithEmailAndPassword(
@@ -30,6 +40,22 @@ class _AuthScreenState extends State<AuthScreen> {
         final UserCredential userCredential =
             await _firebase.createUserWithEmailAndPassword(
                 email: _enteredEmail, password: _enteredPassword);
+        final Reference storageref = FirebaseStorage.instance
+            .ref()
+            .child('user_image')
+            .child('${userCredential.user!.uid}.jpg');
+        await storageref.putFile(_userImageFile!);
+        final imageUrl = await storageref.getDownloadURL();
+        await userCredential.user!.updatePhotoURL(imageUrl);
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
+          'username': _enteredUserName,
+          'email': _enteredEmail,
+          'image_url': imageUrl,
+        });
       }
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).clearSnackBars();
@@ -39,6 +65,9 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       );
     }
+    setState(() {
+      _isuploading = false;
+    });
     _formKey.currentState?.save();
     // print('Email: $_enteredEmail, Password: $_enteredPassword');
   }
@@ -72,7 +101,27 @@ class _AuthScreenState extends State<AuthScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (!_isLogin) const UserImagePiker(),
+                            if (!_isLogin)
+                              UserImagePiker(
+                                onimagePickFn: (pickedImage) {
+                                  _userImageFile = pickedImage;
+                                },
+                              ),
+                            const SizedBox(height: 12),
+                            if (!_isLogin)
+                              TextFormField(
+                                decoration: const InputDecoration(
+                                    labelText: 'Username'),
+                                autocorrect: true,
+                                textCapitalization: TextCapitalization.words,
+                                validator: (value) =>
+                                    value != null && value.length < 4
+                                        ? 'Please enter at least 4 characters.'
+                                        : null,
+                                onSaved: (newValue) =>
+                                    _enteredUserName = newValue!,
+                              ),
+                            const SizedBox(height: 12),
                             TextFormField(
                               decoration: const InputDecoration(
                                   labelText: 'Email Address'),
@@ -85,6 +134,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                       ? 'Please enter a valid email address.'
                                       : null,
                             ),
+                            const SizedBox(height: 12),
                             TextFormField(
                               decoration:
                                   const InputDecoration(labelText: 'Password'),
@@ -97,19 +147,22 @@ class _AuthScreenState extends State<AuthScreen> {
                                   : null,
                             ),
                             const SizedBox(height: 12),
-                            ElevatedButton(
-                              onPressed: _submit,
-                              child: Text(_isLogin ? 'Login' : 'Sign Up'),
-                            ),
-                            TextButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _isLogin = !_isLogin;
-                                  });
-                                },
-                                child: Text(_isLogin
-                                    ? 'Create Account'
-                                    : 'I already have an account')),
+                            if (_isuploading) const CircularProgressIndicator(),
+                            if (!_isuploading)
+                              ElevatedButton(
+                                onPressed: _submit,
+                                child: Text(_isLogin ? 'Login' : 'Sign Up'),
+                              ),
+                            if (!_isuploading)
+                              TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _isLogin = !_isLogin;
+                                    });
+                                  },
+                                  child: Text(_isLogin
+                                      ? 'Create Account'
+                                      : 'I already have an account')),
                           ],
                         )),
                   ),
