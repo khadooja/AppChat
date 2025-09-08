@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // الملف اللي تولد تلقائي بعد flutterfire configure
+import 'package:flutter_application_1/auth.dart';
+import 'firebase_options.dart'; 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,27 +24,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const HomeScreen(),
+      home: const AuthScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Firebase Initialized!'),
-      ),
-      body: const Center(
-        child: Text(
-          'Firebase is ready ✅',
-          style: TextStyle(fontSize: 20),
-        ),
-      ),
-    );
-  }
-}
