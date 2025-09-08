@@ -15,68 +15,21 @@ class _ChatMessagesState extends State<ChatMessages> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-        stream: FirebaseFirestore.instance
-            .collection('chat')
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
-        builder: (ctx, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-                child: Text(
-              'No messages found. Start adding some!',
-            ));
-          }
-          if (snapshot.hasError) {
-            return const Center(
-                child: Text('An error occurred. Please try again later.',
-                    style: TextStyle(color: Colors.red)));
-          }
-          if (snapshot.hasData) {
-            final chatDocs = snapshot.data!.docs;
-            return Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    reverse: true,
-                    itemCount: chatDocs.length,
-                    itemBuilder: (ctx, index) {
-                      final chatDoc = chatDocs[index].data();
-                      final nextChatDoc = index + 1 < chatDocs.length
-                          ? chatDocs[index + 1].data()
-                          : null;
-                      final currentMessageUserId = chatDoc['userId'];
-
-                      final nextMessageUserId =
-                          nextChatDoc != null ? nextChatDoc['userId'] : null;
-
-                      final isFirstInSequence =
-                          currentMessageUserId != nextMessageUserId;
-                      if (isFirstInSequence) {
-                        return MessageBubble.next(
-                            message: chatDoc['text'],
-                            isMe: chatDoc['userId'] ==
-                                FirebaseAuth.instance.currentUser!.uid);
-                      } else {
-                        return MessageBubble.first(
-                          key: ValueKey(chatDocs[index].id),
-                          message: chatDoc['text'],
-                          username: chatDoc['username'],
-                          userImage: chatDoc['userImage'],
-                          isMe: chatDoc['userId'] ==
-                              FirebaseAuth.instance.currentUser!.uid,
-                        );
-                      }
-                    },
-                  ),
-                ),
-                const NewMessage(),
-              ],
-            );
-          }
-
+      stream: FirebaseFirestore.instance
+          .collection('chat')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (ctx, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text('An error occurred. Please try again later.',
+                style: TextStyle(color: Colors.red)),
+          );
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Column(
             children: [
               Expanded(
@@ -87,6 +40,52 @@ class _ChatMessagesState extends State<ChatMessages> {
               NewMessage(),
             ],
           );
-        });
+        }
+
+        final chatDocs = snapshot.data!.docs;
+
+        return Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                reverse: true,
+                itemCount: chatDocs.length,
+                itemBuilder: (ctx, index) {
+                  final chatDoc = chatDocs[index].data();
+                  final nextChatDoc = index + 1 < chatDocs.length
+                      ? chatDocs[index + 1].data()
+                      : null;
+
+                  final currentMessageUserId = chatDoc['userId'];
+                  final nextMessageUserId =
+                      nextChatDoc != null ? nextChatDoc['userId'] : null;
+
+                  final isFirstInSequence =
+                      currentMessageUserId != nextMessageUserId;
+
+                  if (isFirstInSequence) {
+                    return MessageBubble.first(
+                      key: ValueKey(chatDocs[index].id),
+                      message: chatDoc['text'],
+                      username: chatDoc['username'],
+                      userImage: chatDoc['userImage'],
+                      isMe: chatDoc['userId'] ==
+                          FirebaseAuth.instance.currentUser!.uid,
+                    );
+                  } else {
+                    return MessageBubble.next(
+                      message: chatDoc['text'],
+                      isMe: chatDoc['userId'] ==
+                          FirebaseAuth.instance.currentUser!.uid,
+                    );
+                  }
+                },
+              ),
+            ),
+            const NewMessage(),
+          ],
+        );
+      },
+    );
   }
 }
