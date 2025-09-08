@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/widget/user_image.dart';
 
 final _firebase = FirebaseAuth.instance;
 
@@ -71,6 +72,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            if (!_isLogin) const UserImagePiker(),
                             TextFormField(
                               decoration: const InputDecoration(
                                   labelText: 'Email Address'),
